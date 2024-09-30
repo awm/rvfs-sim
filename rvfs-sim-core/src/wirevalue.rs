@@ -9,6 +9,10 @@ pub struct WireValue {
 
 impl WireValue {
     /// Create a new WireValue with the value clamped to the permitted range.
+    ///
+    /// # Parameters
+    ///
+    /// - `level`: Initial level.  The value will be clamped to the acceptable range.
     pub fn new(level: f32) -> Self {
         Self {
             level: level.clamp(0.0, 1.0),
@@ -17,7 +21,11 @@ impl WireValue {
 }
 
 impl From<f32> for WireValue {
-    /// Convert a float to a WireValue.  The float value will be clamped to the acceptable range.
+    /// Convert a float to a WireValue.
+    ///
+    /// # Parameters
+    ///
+    /// - `item`: Float to convert from.  The value will be clamped to the acceptable range.
     fn from(item: f32) -> WireValue {
         WireValue::new(item)
     }
@@ -25,8 +33,34 @@ impl From<f32> for WireValue {
 
 impl From<WireValue> for f32 {
     /// Convert a WireValue to a float in the range [0.0, 1.0].
+    ///
+    /// # Parameters
+    ///
+    /// - `item`: WireValue to convert from.
     fn from(item: WireValue) -> f32 {
         item.level
+    }
+}
+
+impl From<f64> for WireValue {
+    /// Convert a float to a WireValue.
+    ///
+    /// # Parameters
+    ///
+    /// - `item`: Float to convert from.  The value will be clamped to the acceptable range.
+    fn from(item: f64) -> WireValue {
+        WireValue::new(item as f32)
+    }
+}
+
+impl From<WireValue> for f64 {
+    /// Convert a WireValue to a float in the range [0.0, 1.0].
+    ///
+    /// # Parameters
+    ///
+    /// - `item`: WireValue to convert from.
+    fn from(item: WireValue) -> f64 {
+        item.level as f64
     }
 }
 
