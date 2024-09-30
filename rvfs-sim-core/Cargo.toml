@@ -1,0 +1,16 @@
+[package]
+name = "rvfs-sim-core"
+description = "RVFS simulator core library"
+authors.workspace = true
+categories.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+version.workspace = true
+keywords.workspace = true
+
+[dependencies]
+threadpool = "1.8.1"
+
+[dev-dependencies]
+float-cmp = "0.10.0"

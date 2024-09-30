@@ -1,0 +1,12 @@
+[workspace]
+resolver = "2"
+members = ["rvfs-sim", "rvfs-sim-core"]
+
+[workspace.package]
+authors = ["Andrew MacIsaac <macisaac.andrew@gmail.com>"]
+categories = ["simulation", "embedded"]
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/awm/rvfs-sim"
+version = "0.1.0"
+keywords = ["electronics", "embedded", "logic", "simulation"]
