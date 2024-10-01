@@ -146,7 +146,7 @@ impl Wire {
     /// # Parameters
     ///
     /// - `delta_t`: Simulation time elapsed since the last step.
-    pub fn step(&mut self, delta_t: u32) {
+    pub fn step(&mut self, delta_t: u64) {
         let pull = self.pull();
 
         if pull != WirePull::None {
@@ -158,8 +158,6 @@ impl Wire {
             }
         }
     }
-
-
 }
 
 #[cfg(test)]

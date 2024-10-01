@@ -12,7 +12,7 @@ different stages of the simulation.  Each step is broken into three phases.
 ### Phase 1: Input Pin State Updates
 
 In the first phase, each wire has its value measured, and each associated input pin updates its internal state based on
-that measurement.  The collection of the wire and input pins is "checked out" of the simulation and passed off to a
+that measurement.  The collection of the wire and input pins is "checked-out" of the simulation and passed off to a
 thread pool for this calculation, allowing many wire/pin combinations to update in parallel.  All of the items are
 passed back the end of the phase and given back to the parent simulation.
 
@@ -22,7 +22,7 @@ passed back the end of the phase and given back to the parent simulation.
 
 For the second phase, if any of the input pins associated with an element have changed state, then element recalculates
 its output values and sets the next values of its associated output pins accordingly.  As with the wires in the first
-phase, the collection of input pins, element, and output pins is "checked out" and updated in parallel on the thread
+phase, the collection of input pins, element, and output pins is "checked-out" and updated in parallel on the thread
 pool, with the items and result passed back to the parent simulation.
 
 ![Phase 2](step-phase-2.drawio.png)
