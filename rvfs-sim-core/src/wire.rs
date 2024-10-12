@@ -1,7 +1,6 @@
 //! Wires propagate signals from OutputPin instances to InputPin instances.
 
 use crate::wirevalue::WireValue;
-use crate::Id;
 
 /// Types of pull which may be exerted on a Wire.
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -21,8 +20,6 @@ pub enum WirePull {
 /// from one state to another, as determined by its time constant.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Wire {
-    /// The ID used to look up the Wire once it has been added to a Simulation.
-    id: Option<Id>,
     /// A readable, unique name for the Wire within the Simulation.
     name: String,
 
@@ -60,8 +57,7 @@ impl Wire {
             WirePull::None => WireValue::new(0.5),
         };
 
-        Wire {
-            id: None,
+        Self {
             name: name.to_string(),
 
             default_pull,
@@ -74,11 +70,6 @@ impl Wire {
     /// Get the name assigned to the Wire.
     pub fn name(&self) -> &String {
         &self.name
-    }
-
-    /// Get the ID assigned to the Wire, if any.
-    pub fn id(&self) -> Result<Id, String> {
-        self.id.ok_or("No ID set!".to_string())
     }
 
     /// Determine the present pull direction of the Wire.
@@ -104,23 +95,6 @@ impl Wire {
     /// ```
     pub fn measure(&self) -> WireValue {
         self.value
-    }
-
-    /// Assign an ID to this Wire.
-    ///
-    /// An ID may only be assigned once after the Wire is created.  Additional assignments will return an error.
-    /// `Ok(id)` is returned on success.
-    ///
-    /// # Parameters
-    ///
-    /// - `id`: New Id to assign to the Wire.
-    pub fn assign_id(&mut self, id: Id) -> Result<Id, String> {
-        if self.id.is_some() {
-            Err("ID already set!".to_string())
-        } else {
-            self.id = Some(id);
-            Ok(id)
-        }
     }
 
     /// Set the time constant which controls the rate at which the Wire's value moves in the pulled direction.
@@ -171,10 +145,9 @@ mod tests {
         let name = "foo";
         // WHEN a new wire is created
         let wire = Wire::new(name, WirePull::None);
-        // THEN the creation succeeds, the name is set, the pull is set, the ID is not set, and the time constant is 0
+        // THEN the creation succeeds, the name is set, the pull is set, and the time constant is 0
         assert_eq!(name, wire.name());
         assert_eq!(WirePull::None, wire.pull());
-        assert!(wire.id().is_err());
         assert_approx_eq!(f32, 0.0, wire.tau);
     }
     #[test]
@@ -203,32 +176,6 @@ mod tests {
         let wire = Wire::new(name, WirePull::Down);
         // THEN the default wire value is 0.0
         assert_eq!(WireValue::new(0.0), wire.measure());
-    }
-    #[test]
-    fn wire_assign_id() {
-        // GIVEN a new wire and an ID
-        let id: Id = 3;
-        let mut wire = Wire::new("foo", WirePull::None);
-        // WHEN the ID is set
-        let result = wire.assign_id(id);
-        // THEN setting the ID succeeded and the ID is set
-        assert!(result.is_ok());
-        assert_eq!(Ok(id), wire.id());
-    }
-    #[test]
-    fn wire_assign_id_twice() {
-        // GIVEN a new wire and two IDs
-        let id1: Id = 3;
-        let id2: Id = 4;
-        let mut wire = Wire::new("foo", WirePull::None);
-        // WHEN the ID is set twice
-        let result1 = wire.assign_id(id1);
-        let result2 = wire.assign_id(id2);
-        // THEN the first time succeeded and the second failed
-        assert!(result1.is_ok());
-        assert!(result2.is_err());
-        // AND THEN the ID remains the first value
-        assert_eq!(Ok(id1), wire.id());
     }
     #[test]
     fn wire_set_time_constant() {

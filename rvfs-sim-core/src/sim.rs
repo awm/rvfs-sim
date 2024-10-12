@@ -1,5 +1,6 @@
 //! The Simulation orchestrates the passage of simulated time and the transitions of states within the system.
 
+use crate::library::Library;
 use crate::wire::Wire;
 use crate::Id;
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender};
@@ -45,7 +46,7 @@ pub struct Simulation {
     phase_timeout: Duration,
 
     /// Collection of all Wires that have been added to the Simulation.
-    wires: Vec<Option<Wire>>,
+    wires: Library<Wire>,
 }
 
 impl Simulation {
@@ -67,7 +68,7 @@ impl Simulation {
         assert_ne!(0, interval);
 
         let (sender, receiver) = mpsc::channel();
-        Simulation {
+        Self {
             interval,
             time: 0,
 
@@ -76,7 +77,7 @@ impl Simulation {
             receiver,
             phase_timeout: DEFAULT_STEP_PHASE_TIMEOUT,
 
-            wires: Vec::new(),
+            wires: Library::new(),
         }
     }
 
@@ -84,7 +85,7 @@ impl Simulation {
     ///
     /// A Simulation is empty if it has no Wires, Input/OutputPins, or Elements.
     pub fn is_empty(&self) -> bool {
-        self.wires.is_empty()
+        self.wires.iter().count() == 0
     }
 
     /// Change the maximum time to wait for all results of a step phase before raising an error.
@@ -103,12 +104,8 @@ impl Simulation {
     /// # Parameters
     ///
     /// - `wire`: The Wire instance, which will be owned by the Simulation.
-    pub fn add_wire(&mut self, mut wire: Wire) -> Result<Id, String> {
-        let id = self.wires.len();
-        let result = wire.assign_id(id);
-        self.wires.push(Some(wire));
-
-        result
+    pub fn add_wire(&mut self, wire: Wire) -> Result<Id, String> {
+        Ok(self.wires.add(wire))
     }
 
     /// Look up a Wire by ID.
@@ -117,13 +114,10 @@ impl Simulation {
     ///
     /// - `id`: The Id of the Wire which was returned when it was [added](`Self::add_wire`).
     pub fn wire(&self, id: Id) -> Result<&Wire, String> {
-        if id < self.wires.len() {
-            if let Some(ref w) = self.wires[id] {
-                return Ok(w);
-            }
-        }
-
-        Err("No wire found for the given ID".to_string())
+        self.wires
+            .inspect(id)
+            .as_ref()
+            .ok_or("No wire found for the given ID".to_string())
     }
 
     /// Run the simulation.
@@ -173,12 +167,33 @@ impl Simulation {
         Ok(SimResult::Continuing)
     }
 
+    /// Receive and unwrap a step result.
+    fn receive_result(&mut self) -> Result<StepResult, String> {
+        // Wait for every Wire step to complete (or time out), and obtain the results.
+        let execution_result = self
+            .receiver
+            .recv_timeout(self.phase_timeout)
+            .map_err(|err| {
+                (match err {
+                    RecvTimeoutError::Timeout => {
+                        "Timed out waiting for wire step phase to complete!"
+                    }
+                    RecvTimeoutError::Disconnected => {
+                        "Disconnected while waiting for wire step phase to complete!"
+                    }
+                })
+                .to_string()
+            })?;
+
+        Ok(execution_result)
+    }
+
     /// Execute the third phase of a Simulation step by updating the [Wires](Wire).
     fn step_wires(&mut self) -> Result<SimResult, String> {
         let mut result = Ok(SimResult::Continuing);
 
-        for w in self.wires.iter_mut() {
-            if let Some(mut wire) = w.take() {
+        for id in self.wires.iter() {
+            if let Some(mut wire) = self.wires.checkout(id) {
                 // "Check out" the Wire for the step execution.
 
                 let sender = self.sender.clone();
@@ -196,37 +211,14 @@ impl Simulation {
             }
         }
 
-        for _ in 0..self.wires.len() {
-            // Wait for every Wire step to complete (or time out), and obtain the results.
-            let execution_result =
-                self.receiver
-                    .recv_timeout(self.phase_timeout)
-                    .map_err(|err| {
-                        (match err {
-                            RecvTimeoutError::Timeout => {
-                                "Timed out waiting for wire step phase to complete!"
-                            }
-                            RecvTimeoutError::Disconnected => {
-                                "Disconnected while waiting for wire step phase to complete!"
-                            }
-                        })
-                        .to_string()
-                    })?;
-            if let StepResult::Wire(op_result, wire) = execution_result {
-                if let Err(msg) = op_result {
-                    result = Err(msg);
-                    break;
-                }
-                if let Ok(id) = wire.id() {
-                    // Check-in the Wire and OutputPins.
-                    if self.wires[id].replace(wire).is_some() {
-                        result =
-                            Err("Tried to insert wire into already full slot in vector!"
-                                .to_string());
-                        break;
-                    }
-                    // TODO: Check-in OutputPins.
-                }
+        for id in self.wires.iter() {
+            if let StepResult::Wire(op_result, wire) = self.receive_result()? {
+                op_result?;
+
+                // Check-in the Wire and OutputPins.
+                self.wires.checkin(id, wire)?;
+
+                // TODO: Check-in OutputPins.
             }
         }
 
