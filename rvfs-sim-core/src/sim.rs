@@ -150,6 +150,9 @@ impl Simulation {
             }
         }
 
+        // NOTE: may make these debug-only later
+        self.wires.audit()?;
+
         self.time += self.interval;
 
         result

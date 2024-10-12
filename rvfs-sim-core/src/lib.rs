@@ -1,5 +1,6 @@
 // pub mod ipin;
 mod library;
+pub mod opin;
 pub mod sim;
 pub mod wire;
 pub mod wirevalue;
