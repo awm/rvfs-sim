@@ -190,30 +190,26 @@ impl Simulation {
 
     /// Execute the third phase of a Simulation step by updating the [Wires](Wire).
     fn step_wires(&mut self) -> Result<SimResult, String> {
-        let mut result = Ok(SimResult::Continuing);
+        let mut finished = false;
 
         for id in self.wires.iter() {
-            if let Some(mut wire) = self.wires.checkout(id) {
-                // "Check out" the Wire for the step execution.
+            let mut wire = self.wires.checkout(id)?;
+            // "Check out" the Wire for the step execution.
 
-                let sender = self.sender.clone();
-                let interval = self.interval;
-                // TODO: "Check-out" OutputPins and temporarily inject into Wire.
+            let sender = self.sender.clone();
+            let interval = self.interval;
+            // TODO: "Check-out" OutputPins and temporarily inject into Wire.
 
-                // Delegate the Wire step execution to the thread pool.
-                self.pool.execute(move || {
-                    wire.step(interval);
-                    let _ = sender.send(StepResult::Wire(Ok(SimResult::Continuing), wire));
-                });
-            } else {
-                result = Err("Hole discovered in wire vector!".to_string());
-                break;
-            }
+            // Delegate the Wire step execution to the thread pool.
+            self.pool.execute(move || {
+                wire.step(interval);
+                let _ = sender.send(StepResult::Wire(Ok(SimResult::Continuing), wire));
+            });
         }
 
         for id in self.wires.iter() {
             if let StepResult::Wire(op_result, wire) = self.receive_result()? {
-                op_result?;
+                finished |= op_result? == SimResult::Finished;
 
                 // Check-in the Wire and OutputPins.
                 self.wires.checkin(id, wire)?;
@@ -222,7 +218,11 @@ impl Simulation {
             }
         }
 
-        result
+        if finished {
+            Ok(SimResult::Finished)
+        } else {
+            Ok(SimResult::Continuing)
+        }
     }
 }
 

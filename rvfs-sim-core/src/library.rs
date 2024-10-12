@@ -51,13 +51,15 @@ impl<T> Library<T> {
     /// # Parameters
     ///
     /// - `id`: Id of the item to check out.
-    pub fn checkout(&mut self, id: Id) -> Option<T> {
+    pub fn checkout(&mut self, id: Id) -> Result<T, String> {
         if id < self.items.len() {
             // The item is on the shelf.
-            self.items[id].take()
+            self.items[id]
+                .take()
+                .ok_or("Item not available!".to_string())
         } else {
             // The item is currently checked out.
-            None
+            Err("Item not available!".to_string())
         }
     }
 
@@ -144,10 +146,10 @@ mod tests {
         lib.add(0);
         // WHEN an item is checked out
         let item = lib.checkout(id);
-        // THEN the checked out item has the expected value, and inspecting or checking out that ID returns None
-        assert_eq!(Some(-766), item);
+        // THEN the checked out item has the expected value, and inspecting or checking out that ID returns an error
+        assert_eq!(Ok(-766), item);
         assert_eq!(None, *lib.inspect(id));
-        assert_eq!(None, lib.checkout(id));
+        assert!(lib.checkout(id).is_err());
     }
     #[test]
     fn library_checkout_invalid() {
@@ -158,8 +160,8 @@ mod tests {
         lib.add(0);
         // WHEN an invalid item is checked out
         let item = lib.checkout(7);
-        // THEN the checked out item is None
-        assert_eq!(None, item);
+        // THEN the checked out item is an error
+        assert!(item.is_err());
     }
     #[test]
     fn library_checkin() {
@@ -169,7 +171,7 @@ mod tests {
         lib.add(-766);
         let item = lib.checkout(0);
         // WHEN the item is checked back in
-        assert!(item.is_some());
+        assert!(item.is_ok());
         let result = lib.checkin(0, item.unwrap());
         // THEN check-in succeeds and it is back in the expected location
         assert!(result.is_ok());
@@ -183,7 +185,7 @@ mod tests {
         lib.add(-766);
         let item = lib.checkout(0);
         // WHEN the library is audited
-        assert!(item.is_some());
+        assert!(item.is_ok());
         let result = lib.audit();
         // THEN the audit fails
         assert!(result.is_err());
@@ -196,7 +198,7 @@ mod tests {
         lib.add(-766);
         let item = lib.checkout(0);
         // WHEN item is checked in and the library is audited
-        assert!(item.is_some());
+        assert!(item.is_ok());
         let result = lib.checkin(0, item.unwrap());
         assert!(result.is_ok());
         let result = lib.audit();
